@@ -188,7 +188,7 @@ func (f FrankenPHPModule) ServeHTTP(w http.ResponseWriter, r *http.Request, next
 	documentRoot := repl.ReplaceKnown(f.Root, "")
 
 	if frankenHttp2Client == nil {
-		frankenHttp2Client = frankenphp.CreateFrankenHttp2Client(true, false) // TODO replace default arguments to value from config
+		frankenHttp2Client = frankenphp.CreateFrankenHttp2Client(true, true) // TODO replace default arguments to value from config
 	}
 	fr := frankenphp.NewRequestWithContext(r, documentRoot, f.logger)
 	fc, _ := frankenphp.FromContext(fr.Context())

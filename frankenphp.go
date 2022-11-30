@@ -145,13 +145,13 @@ func CreateFrankenHttp2Client(insecureSkipVerify bool, allowHTTP bool) *http.Cli
 	transport := &http2.Transport{
 		AllowHTTP: allowHTTP,
 	}
+	transport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+		return net.Dial(network, addr)
+	}
+
 	if insecureSkipVerify {
 		transport.TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: true,
-		}
-	} else {
-		transport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial(network, addr)
 		}
 	}
 
