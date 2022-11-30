@@ -176,6 +176,8 @@ func (f *FrankenPHPModule) Provision(ctx caddy.Context) error {
 	return nil
 }
 
+var httpClient *http.Client
+
 // ServeHTTP implements caddyhttp.MiddlewareHandler.
 // TODO: Expose TLS versions as env vars, as Apache's mod_ssl: https://github.com/caddyserver/caddy/blob/master/modules/caddyhttp/reverseproxy/fastcgi/fastcgi.go#L298
 func (f FrankenPHPModule) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
@@ -183,8 +185,14 @@ func (f FrankenPHPModule) ServeHTTP(w http.ResponseWriter, r *http.Request, next
 	repl := r.Context().Value(caddy.ReplacerCtxKey).(*caddy.Replacer)
 
 	documentRoot := repl.ReplaceKnown(f.Root, "")
+
+	if httpClient == nil {
+		httpClient = &http.Client{}
+	}
 	fr := frankenphp.NewRequestWithContext(r, documentRoot, f.logger)
 	fc, _ := frankenphp.FromContext(fr.Context())
+	fc.Http2Client = httpClient
+
 	fc.ResolveRootSymlink = f.ResolveRootSymlink
 	fc.SplitPath = f.SplitPath
 

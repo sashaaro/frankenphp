@@ -208,6 +208,20 @@ PHP_FUNCTION(frankenphp_finish_request) { /* {{{ */
 
 } /* }}} */
 
+PHP_FUNCTION(frankenphp_client_send_request) {
+    zend_string *request;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(request)
+    ZEND_PARSE_PARAMETERS_END();
+
+	frankenphp_server_context* ctx = SG(server_context);
+
+    const char *response = go_frankenphp_client_send_request(ctx->current_request ? ctx->current_request : ctx->main_request, request->val);
+
+    RETURN_STRING(response);
+}
+
 PHP_FUNCTION(frankenphp_handle_request) {
 	zend_fcall_info fci;
 	zend_fcall_info_cache fcc;

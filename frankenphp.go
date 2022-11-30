@@ -19,12 +19,14 @@ package frankenphp
 // #include "frankenphp.h"
 import "C"
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"runtime"
 	"runtime/cgo"
 	"strconv"
@@ -122,6 +124,8 @@ type FrankenPHPContext struct {
 
 	// The logger associated with the current request
 	Logger *zap.Logger
+
+	Http2Client *http.Client
 
 	populated    bool
 	authPassword string
@@ -464,6 +468,47 @@ func go_ub_write(rh C.uintptr_t, cString *C.char, length C.int) (C.size_t, C.boo
 	}
 
 	return C.size_t(i), C.bool(clientHasClosed(r))
+}
+
+//export go_frankenphp_client_send_request
+func go_frankenphp_client_send_request(rh C.uintptr_t, request *C.char) *C.char {
+	contextReq := cgo.Handle(rh).Value().(*http.Request)
+	fc, _ := FromContext(contextReq.Context())
+	fc.Logger.Info("http.client sending")
+
+	raw := C.GoString(request)
+
+	req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+	if err != nil {
+		fc.Logger.Warn(err.Error()) // todo throw exception
+	}
+
+	req.RequestURI = ""
+	req.URL.Host = req.Host
+
+	//req.URL.Scheme = "http"
+	//req.ProtoMajor = 2
+	//req.ProtoMinor = 0
+
+	if err != nil {
+		fc.Logger.Warn("http.client Failed to parse request") // todo throw exception
+	}
+
+	fc.Logger.Info(fmt.Sprintf("http.client request %s %s", req.Method, req.URL))
+
+	if fc.Http2Client == nil {
+		fc.Logger.Warn("http.client not exists!!")
+		fc.Http2Client = &http.Client{}
+	}
+	res, err := fc.Http2Client.Do(req)
+	if err != nil {
+		fc.Logger.Warn("http.client error")
+	}
+	fc.Logger.Info(fmt.Sprintf("http.client response %s", res.StatusCode))
+
+	b, err := httputil.DumpResponse(res, true)
+
+	return C.CString(string(b))
 }
 
 //export go_register_variables
