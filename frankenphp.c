@@ -208,6 +208,7 @@ PHP_FUNCTION(frankenphp_finish_request) { /* {{{ */
 
 } /* }}} */
 
+// TODO move out from core file. add as standalone extension?!
 PHP_FUNCTION(frankenphp_client_send_request) {
     zend_string *request;
 
@@ -218,7 +219,7 @@ PHP_FUNCTION(frankenphp_client_send_request) {
 	frankenphp_server_context* ctx = SG(server_context);
 
     const char *response = go_frankenphp_client_send_request(ctx->current_request ? ctx->current_request : ctx->main_request, request->val);
-
+    // TODO check if response startWith error -> throw exception
     RETURN_STRING(response);
 }
 

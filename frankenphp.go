@@ -22,9 +22,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"runtime"
@@ -35,6 +37,7 @@ import (
 	"unsafe"
 
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 	// debug on Linux
 	//_ "github.com/ianlancetaylor/cgosymbolizer"
 )
@@ -125,6 +128,7 @@ type FrankenPHPContext struct {
 	// The logger associated with the current request
 	Logger *zap.Logger
 
+	// TODO create own context?!
 	Http2Client *http.Client
 
 	populated    bool
@@ -135,6 +139,25 @@ type FrankenPHPContext struct {
 
 	responseWriter http.ResponseWriter
 	done           chan interface{}
+}
+
+func CreateFrankenHttp2Client(insecureSkipVerify bool, allowHTTP bool) *http.Client {
+	transport := &http2.Transport{
+		AllowHTTP: allowHTTP,
+	}
+	if insecureSkipVerify {
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	} else {
+		transport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return net.Dial(network, addr)
+		}
+	}
+
+	return &http.Client{
+		Transport: transport,
+	}
 }
 
 func clientHasClosed(r *http.Request) bool {
@@ -470,43 +493,53 @@ func go_ub_write(rh C.uintptr_t, cString *C.char, length C.int) (C.size_t, C.boo
 	return C.size_t(i), C.bool(clientHasClosed(r))
 }
 
+// move out to separate file
+//
 //export go_frankenphp_client_send_request
 func go_frankenphp_client_send_request(rh C.uintptr_t, request *C.char) *C.char {
 	contextReq := cgo.Handle(rh).Value().(*http.Request)
 	fc, _ := FromContext(contextReq.Context())
-	fc.Logger.Info("http.client sending")
-
 	raw := C.GoString(request)
 
 	req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+	//req, err := http.NewRequest("GET", "https://httpbin.org/headers", nil)
+
 	if err != nil {
-		fc.Logger.Warn(err.Error()) // todo throw exception
+		fc.Logger.Error(fmt.Sprintf("http.client failed to parse request. %s. Raw request:\n%s", err.Error(), raw))
+		// todo throw exception
+		return C.CString(fmt.Sprintf("Error parsing request: %s. Raw request:\n%s", err.Error(), raw))
 	}
 
 	req.RequestURI = ""
 	req.URL.Host = req.Host
 
-	//req.URL.Scheme = "http"
-	//req.ProtoMajor = 2
-	//req.ProtoMinor = 0
-
-	if err != nil {
-		fc.Logger.Warn("http.client Failed to parse request") // todo throw exception
+	if req.URL.Scheme == "" {
+		req.URL.Scheme = "https"
 	}
 
-	fc.Logger.Info(fmt.Sprintf("http.client request %s %s", req.Method, req.URL))
+	// req.ProtoMajor = 2
+	// req.ProtoMinor = 0
+
+	fc.Logger.Debug(fmt.Sprintf("http.client request %s %s", req.Method, req.URL.String()))
 
 	if fc.Http2Client == nil {
-		fc.Logger.Warn("http.client not exists!!")
-		fc.Http2Client = &http.Client{}
+		fc.Logger.Error(fmt.Sprintf("http.client Frankenphp http client not exist."))
+		// TODO exception
+		return C.CString(fmt.Sprintf("Error Frankenphp httpclient is not supported %s"))
 	}
 	res, err := fc.Http2Client.Do(req)
 	if err != nil {
-		fc.Logger.Warn("http.client error")
+		fc.Logger.Error(fmt.Sprintf("http.client Failed do request. %s", err.Error()))
+
+		return C.CString(fmt.Sprintf("Error failed request: %s", err.Error()))
 	}
-	fc.Logger.Info(fmt.Sprintf("http.client response %s", res.StatusCode))
+	fc.Logger.Debug(fmt.Sprintf("http.client Response status %s", res.StatusCode))
 
 	b, err := httputil.DumpResponse(res, true)
+
+	if err != nil {
+		// TODO
+	}
 
 	return C.CString(string(b))
 }

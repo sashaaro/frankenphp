@@ -176,7 +176,8 @@ func (f *FrankenPHPModule) Provision(ctx caddy.Context) error {
 	return nil
 }
 
-var httpClient *http.Client
+// long liven common http2 client for php with http2 multiplexing support
+var frankenHttp2Client *http.Client
 
 // ServeHTTP implements caddyhttp.MiddlewareHandler.
 // TODO: Expose TLS versions as env vars, as Apache's mod_ssl: https://github.com/caddyserver/caddy/blob/master/modules/caddyhttp/reverseproxy/fastcgi/fastcgi.go#L298
@@ -186,12 +187,12 @@ func (f FrankenPHPModule) ServeHTTP(w http.ResponseWriter, r *http.Request, next
 
 	documentRoot := repl.ReplaceKnown(f.Root, "")
 
-	if httpClient == nil {
-		httpClient = &http.Client{}
+	if frankenHttp2Client == nil {
+		frankenHttp2Client = frankenphp.CreateFrankenHttp2Client(true, false) // TODO replace default arguments to value from config
 	}
 	fr := frankenphp.NewRequestWithContext(r, documentRoot, f.logger)
 	fc, _ := frankenphp.FromContext(fr.Context())
-	fc.Http2Client = httpClient
+	fc.Http2Client = frankenHttp2Client
 
 	fc.ResolveRootSymlink = f.ResolveRootSymlink
 	fc.SplitPath = f.SplitPath

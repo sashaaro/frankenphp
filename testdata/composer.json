@@ -1,0 +1,14 @@
+{
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "guzzlehttp/guzzle": "^7.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "./"
+    }
+  },
+  "name": "test/test",
+  "description": "test"
+}
