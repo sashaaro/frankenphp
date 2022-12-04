@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dunglas/frankenphp"
 	"github.com/stretchr/testify/assert"
 )
 

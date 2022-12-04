@@ -72,6 +72,7 @@ func startWorkers(fileName string, nbWorkers int) error {
 					return
 				}
 
+				//l.Error("error", zap.String("worker", err.Error()))
 				// TODO: make the max restart configurable
 				if _, ok := workersRequestChans.Load(absFileName); ok {
 					workersReadyWG.Add(1)

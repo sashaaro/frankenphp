@@ -3,6 +3,7 @@ package frankenphp_test
 import (
 	"context"
 	"fmt"
+	"github.com/dunglas/frankenphp"
 	"io"
 	"log"
 	"net/http"
@@ -18,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dunglas/frankenphp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"

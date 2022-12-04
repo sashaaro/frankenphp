@@ -17,7 +17,9 @@
 #include "C-Thread-Pool/thpool.c"
 
 #include "frankenphp_arginfo.h"
+
 #include "_cgo_export.h"
+#include "init_plugins.h"
 
 #if defined(PHP_WIN32) && defined(ZTS)
 ZEND_TSRMLS_CACHE_DEFINE()
@@ -207,21 +209,6 @@ PHP_FUNCTION(frankenphp_finish_request) { /* {{{ */
     RETURN_FALSE;
 
 } /* }}} */
-
-// TODO move out from core file. add as standalone extension?!
-PHP_FUNCTION(frankenphp_client_send_request) {
-    zend_string *request;
-
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_STR(request)
-    ZEND_PARSE_PARAMETERS_END();
-
-	frankenphp_server_context* ctx = SG(server_context);
-
-    const char *response = go_frankenphp_client_send_request(ctx->current_request ? ctx->current_request : ctx->main_request, request->val);
-    // TODO check if response startWith error -> throw exception
-    RETURN_STRING(response);
-}
 
 PHP_FUNCTION(frankenphp_handle_request) {
 	zend_fcall_info fci;
@@ -567,6 +554,9 @@ static void *manager_thread(void *arg) {
 
 	frankenphp_sapi_module.ini_entries = malloc(sizeof(HARDCODED_INI));
 	memcpy(frankenphp_sapi_module.ini_entries, HARDCODED_INI, sizeof(HARDCODED_INI));
+
+    // TODO generated. dynamically add extensions from plugin
+    zend_register_internal_module(&frankenphp_httpclient_module);
 
 	frankenphp_sapi_module.startup(&frankenphp_sapi_module);
 
